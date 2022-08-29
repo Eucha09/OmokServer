@@ -51,6 +51,13 @@ void PacketProcess::Process(PacketInfo packetInfo)
 	case (int)commonPacketId::ROOM_CHAT_REQ:
 		ChatRoom(packetInfo);
 		break;
+	case (int)commonPacketId::PK_READY_GAME_ROOM_REQ:
+		GameReadyRoom(packetInfo);
+		break;
+	case (int)commonPacketId::PK_CANCEL_READY_GAME_ROOM_REQ:
+		CancelGameReadyRoom(packetInfo);
+	case (int)commonPacketId::PK_PUT_AL_ROOM_REQ:
+		PutAL(packetInfo);
 	}
 	
 }
@@ -65,8 +72,14 @@ ERROR_CODE PacketProcess::NtfSysConnctSession(PacketInfo packetInfo)
 ERROR_CODE PacketProcess::NtfSysCloseSession(PacketInfo packetInfo)
 {
 	auto pUser = std::get<1>(m_pRefUserMgr->GetUser(packetInfo.SessionIndex));
+	Room* room;
 
-	if (pUser) {		
+	if (pUser) {
+		if (pUser->GetRoomIndex() >= 0)
+		{
+			room = m_pRefRoomMgr->GetRoom(pUser->GetRoomIndex());
+			room->ExitUser(pUser);
+		}
 		m_pRefUserMgr->RemoveUser(packetInfo.SessionIndex);		
 	}
 			
@@ -150,16 +163,7 @@ ERROR_CODE PacketProcess::EnterRoom(PacketInfo packetInfo)
 
 	// 방에 다른 유저가 있다면 새 유저가 들어온다는 것을 알린다.
 	if (room->GetUserCount() > 0)
-	{
-		std::string userId = user->GetID();
-		ntfPkt.UserID_len = userId.size();
-		for (int i = 0; i < userId.size(); i++)
-			ntfPkt.UserID[i] = userId[i];
-			
-		std::vector<User*>& userList = room->GetUserLIst();
-		for(int i = 0; i < userList.size(); i++)
-			m_pRefNetwork->SendData(userList[i]->GetSessioIndex(), (short)PACKET_ID::ROOM_ENTER_NEW_USER_NTF, sizeof(PktRoomEnterUserInfoNtf), (char*)&ntfPkt);
-	}
+		room->NotifyEnterUserInfo(user->GetID());
 
 	//원하는 방번호를 가진 방에 입장시킨다.
 	room->Enter(user);
@@ -202,19 +206,25 @@ ERROR_CODE PacketProcess::LeaveRoom(PacketInfo packetInfo)
 
 	// 방에서 유저를 빼고, 유저 상태도 변경한다.
 	room = m_pRefRoomMgr->GetRoom(user->GetRoomIndex());
+
+	// room이 게임중이라면
+	if (room->GetRoomState() == Room::ROOM_STATE::GAME)
+	{
+		string winUserID;
+		for (int i = 0; i < room->GetUserCount(); i++)
+			if (room->GetUserLIst()[i]->GetID() != user->GetID())
+				winUserID = room->GetUserLIst()[i]->GetID();
+		room->NotifyEndGame(winUserID);
+		room->GetOmokManager()->Clear();
+	}
+
 	room->Leave(user);
 	user->LeaveRoom();
 	m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room %d Leave %s", room->GetIndex(), user->GetID().c_str());
 
 	// 아직 방에 다른 유저가 있다면 PK_USER_LEAVE_ROOM_NTF을 보낸다
-	std::string userId = user->GetID();
-	ntfPkt.UserID_len = userId.size();
-	for (int i = 0; i < userId.size(); i++)
-		ntfPkt.UserID[i] = userId[i];
-	std::vector<User*>& userList = room->GetUserLIst();
-	for (int i = 0; i < userList.size(); i++)
-		m_pRefNetwork->SendData(userList[i]->GetSessioIndex(), (short)PACKET_ID::ROOM_LEAVE_USER_NTF, sizeof(PktRoomLeaveUserInfoNtf), (char*)&ntfPkt);
-	
+	room->NotifyLeaveUserInfo(user->GetID());
+
 	// 문제가 없다면 요청이 성공함을 알린다
 	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::ROOM_LEAVE_RES, sizeof(PktRoomLeaveRes), (char*)&resPkt);
 	
@@ -250,20 +260,108 @@ ERROR_CODE PacketProcess::ChatRoom(PacketInfo packetInfo)
 	room = m_pRefRoomMgr->GetRoom(user->GetRoomIndex());
 	
 	// 방의 모든 유저에게 PK_CHAT_ROOM_NTF을 보낸다
-	std::string userID = user->GetID();
-	ntfPkt.UserID_len = userID.size();
-	for (int i = 0; i < userID.size(); i++)
-		ntfPkt.UserID[i] = userID[i];
-	ntfPkt.Mag_len = reqPkt->Msg_len;
-	for (int i = 0; i < reqPkt->Msg_len; i++)
-		ntfPkt.Msg[i] = reqPkt->Msg[i];
+	room->NotifyChat(user->GetID(), reqPkt->Msg_len, reqPkt->Msg);
+
 	//m_pRefLogger->Write(LOG_TYPE::L_INFO, "Room %d Chat %s : %s", room->GetIndex(), user->GetID().c_str(), reqPkt->Msg);
-	std::vector<User*>& userList = room->GetUserLIst();
-	for (int i = 0; i < userList.size(); i++)
-		m_pRefNetwork->SendData(userList[i]->GetSessioIndex(), (short)PACKET_ID::ROOM_CHAT_NTF, sizeof(PktRoomChatNtf), (char*)&ntfPkt);
 	
 	// 채팅 메시지에 문제가 없다면 요청이 성공함을 알린다
 	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::ROOM_CHAT_RES, sizeof(PktRoomChatRes), (char*)&resPkt);
+
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::GameReadyRoom(PacketInfo packetInfo)
+{
+	PktReadyGameRoomRes resPkt;
+	PktReadyGameRoomNtf ntfPkt;
+	auto reqPkt = (PktReadyGameRoomReq*)packetInfo.pRefData;
+	User* user;
+	Room* room;
+
+	user = std::get<1>(m_pRefUserMgr->GetUser(packetInfo.SessionIndex));
+	if (user->GetRoomIndex() < 0)
+	{
+		resPkt.SetError(ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::ROOM_CHAT_RES, sizeof(PktRoomChatRes), (char*)&resPkt);
+		return ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM;
+	}
+	
+	// user가 준비가 안되있는 상태라면 준비상태로 바꾸고 다른 유저들에게 알리기
+	if (user->GetUserState() == User::DOMAIN_STATE::ROOM)
+	{
+		user->GameReady();
+
+		room = m_pRefRoomMgr->GetRoom(user->GetRoomIndex());
+
+		room->NotifyReady(user->GetID());
+
+		room->ReadyCheck();
+	}
+
+	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::PK_READY_GAME_ROOM_RES, sizeof(PktReadyGameRoomRes), (char*)&resPkt);
+	
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::CancelGameReadyRoom(PacketInfo packetInfo)
+{
+	PktCancelReadyGameRoomRes resPkt;
+	PktCancelReadyGameRoomNtf ntfPkt;
+	auto reqPkt = (PktCancelReadyGameRoomReq*)packetInfo.pRefData;
+	User* user;
+	Room* room;
+
+	user = std::get<1>(m_pRefUserMgr->GetUser(packetInfo.SessionIndex));
+	if (user->GetRoomIndex() < 0)
+	{
+		resPkt.SetError(ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::ROOM_CHAT_RES, sizeof(PktRoomChatRes), (char*)&resPkt);
+		return ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM;
+	}
+
+	// user가 준비상태라면 준비 취소하고 다른 유저들에게 알리기
+	if (user->GetUserState() == User::DOMAIN_STATE::READY)
+	{
+		user->CancelGameReady();
+
+		room = m_pRefRoomMgr->GetRoom(user->GetRoomIndex());
+
+		room->NotifyCancel(user->GetID());
+	}
+
+	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::PK_CANCEL_READY_GAME_ROOM_RES, sizeof(PktCancelReadyGameRoomRes), (char*)&resPkt);
+
+	return ERROR_CODE::NONE;
+}
+
+ERROR_CODE PacketProcess::PutAL(PacketInfo packetInfo)
+{
+	PktPutALGameRoomRes resPkt;
+	auto reqPkt = (PktPutALGameRoomReq*)packetInfo.pRefData;
+	User* user;
+	Room* room;
+
+	user = std::get<1>(m_pRefUserMgr->GetUser(packetInfo.SessionIndex));
+	if (user->GetRoomIndex() < 0)
+	{
+		resPkt.SetError(ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::ROOM_CHAT_RES, sizeof(PktRoomChatRes), (char*)&resPkt);
+		return ERROR_CODE::USER_MGR_NOT_IN_THE_ROOM;
+	}
+	if (user->GetUserState() != User::DOMAIN_STATE::GAME)
+	{
+		resPkt.SetError(ERROR_CODE::USER_MGR_NOT_PLAYING_GAME);
+		m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::PK_PUT_AL_ROOM_RES, sizeof(PktPutALGameRoomRes), (char*)&resPkt);
+		return ERROR_CODE::USER_MGR_NOT_PLAYING_GAME;
+	}
+
+	m_pRefLogger->Write(LOG_TYPE::L_INFO, "%s Put Stone %d %d", user->GetID().c_str(), reqPkt->XPos, reqPkt->YPos);
+
+	room = m_pRefRoomMgr->GetRoom(user->GetRoomIndex());
+
+	room->GetOmokManager()->PutStone(reqPkt->XPos, reqPkt->YPos, user->GetID());
+
+	m_pRefNetwork->SendData(packetInfo.SessionIndex, (short)PACKET_ID::PK_PUT_AL_ROOM_RES, sizeof(PktPutALGameRoomRes), (char*)&resPkt);
 
 	return ERROR_CODE::NONE;
 }

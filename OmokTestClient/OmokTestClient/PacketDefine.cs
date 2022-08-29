@@ -41,7 +41,20 @@ namespace OmokTestClient
         ROOM_CHAT_RES = 77,
         ROOM_CHAT_NOTIFY = 78,
 
+        PK_READY_GAME_ROOM_REQ = 81,
+        PK_READY_GAME_ROOM_RES = 82,
+        PK_READY_GAME_ROOM_NTF = 83,
 
+        PK_CANCEL_READY_GAME_ROOM_REQ = 86,
+        PK_CANCEL_READY_GAME_ROOM_RES = 87,
+        PK_CANCEL_READY_GAME_ROOM_NTF = 88,
+
+        PK_START_GAME_ROOM_NTF = 91,
+        PK_END_GAME_ROOM_NTF = 92,
+
+        PK_PUT_AL_ROOM_REQ = 96,
+        PK_PUT_AL_ROOM_RES = 97,
+        PK_PUT_AL_ROOM_NTF = 98,
 
         //PACKET_ID_ERROR_NTF = 703,
 

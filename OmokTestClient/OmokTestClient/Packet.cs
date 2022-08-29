@@ -238,7 +238,6 @@ namespace OmokTestClient
         }
     }
 
-
     public class RoomLeaveResPacket
     {
         public Int16 Result;
@@ -290,6 +289,170 @@ namespace OmokTestClient
         }
     }
 
+    //- 게임 시작 요청(준비완료 통보)
+    public class ReadyGameRoomResPacket
+    {
+        public Int16 Result;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            Result = BitConverter.ToInt16(bodyData, 0);
+            return true;
+        }
+    }
+
+    public class ReadyGameRoomNtfPacket
+    {
+        //public Int64 UserUniqueId;
+        public string UserID;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            var readPos = 0;
+
+            //UserUniqueId = BitConverter.ToInt64(bodyData, readPos);
+            //readPos += 8;S
+
+            var idlen = (SByte)bodyData[readPos];
+            ++readPos;
+
+            UserID = Encoding.UTF8.GetString(bodyData, readPos, idlen);
+            readPos += idlen;
+
+            return true;
+        }
+    }
+
+    //- 게임 시작 취소
+    public class CancelReadyGameRoomResPacket
+    {
+        public Int16 Result;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            Result = BitConverter.ToInt16(bodyData, 0);
+            return true;
+        }
+    }
+
+    public class CancelReadyGameRoomNtfPacket
+    {
+        //public Int64 UserUniqueId;
+        public string UserID;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            var readPos = 0;
+
+            //UserUniqueId = BitConverter.ToInt64(bodyData, readPos);
+            //readPos += 8;S
+
+            var idlen = (SByte)bodyData[readPos];
+            ++readPos;
+
+            UserID = Encoding.UTF8.GetString(bodyData, readPos, idlen);
+            readPos += idlen;
+
+            return true;
+        }
+    }
+
+    //서버의 게임 시작 통보
+    public class StartGameRoomNtfPacket
+    {
+        //public Int64 UserUniqueId;
+        public string UserID;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            var readPos = 0;
+
+            //UserUniqueId = BitConverter.ToInt64(bodyData, readPos);
+            //readPos += 8;S
+
+            var idlen = (SByte)bodyData[readPos];
+            ++readPos;
+
+            UserID = Encoding.UTF8.GetString(bodyData, readPos, idlen);
+            readPos += idlen;
+
+            return true;
+        }
+    }
+
+    public class PutALGameRoomReqPacket
+    {
+        Int16 XPos;
+        Int16 YPos;
+
+        public void SetValue(short x, short y)
+        {
+            XPos = x;
+            YPos = y;
+        }
+
+        public byte[] ToBytes()
+        {
+            List<byte> dataSource = new List<byte>();
+            dataSource.AddRange(BitConverter.GetBytes(XPos));
+            dataSource.AddRange(BitConverter.GetBytes(YPos));
+            return dataSource.ToArray();
+        }
+    }
+
+    public class PutALGameRoomResPacket
+    {
+        public Int16 Result;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            Result = BitConverter.ToInt16(bodyData, 0);
+            return true;
+        }
+    }
+
+    public class PutALGameRoomNtfPacket
+    {
+        public Int16 XPos;
+        public Int16 YPos;
+        public Int16 Stone;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            var readPos = 0;
+
+            XPos = BitConverter.ToInt16(bodyData, readPos);
+            readPos += 2;
+            YPos = BitConverter.ToInt16(bodyData, readPos);
+            readPos += 2;
+            Stone = BitConverter.ToInt16(bodyData, readPos);
+            readPos += 2;
+
+            return true;
+        }
+    }
+
+    public class EndGameRoomNtfPacket
+    {
+        //public Int64 UserUniqueId;
+        public string WinUserID;
+
+        public bool FromBytes(byte[] bodyData)
+        {
+            var readPos = 0;
+
+            //UserUniqueId = BitConverter.ToInt64(bodyData, readPos);
+            //readPos += 8;S
+
+            var idlen = (SByte)bodyData[readPos];
+            ++readPos;
+
+            WinUserID = Encoding.UTF8.GetString(bodyData, readPos, idlen);
+            readPos += idlen;
+
+            return true;
+        }
+    }
 
     public class PingRequest
     {

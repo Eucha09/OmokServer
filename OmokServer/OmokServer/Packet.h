@@ -87,4 +87,68 @@ struct PktRoomChatNtf
 	short Mag_len;
 	wchar_t Msg[MAX_ROOM_CHAT_MSG_SIZE] = { 0, };
 };
+
+//- 게임 시작 요청(준비완료 통보)
+struct PktReadyGameRoomReq {};
+
+struct PktReadyGameRoomRes : PktBase
+{
+};
+
+struct PktReadyGameRoomNtf
+{
+	unsigned char UserID_len;
+	char UserID[MAX_USER_ID_SIZE] = { 0, };
+};
+
+
+//- 게임 시작 취소 요청
+struct PktCancelReadyGameRoomReq {};
+
+struct PktCancelReadyGameRoomRes : PktBase
+{
+};
+
+struct PktCancelReadyGameRoomNtf
+{
+	unsigned char UserID_len;
+	char UserID[MAX_USER_ID_SIZE] = { 0, };
+};
+
+
+//서버의 게임 시작 통보
+struct PktStartGameRoomNtf
+{
+	unsigned char UserID_len;
+	char TurnUserID[MAX_USER_ID_SIZE] = { 0, };
+};
+
+
+// 알 두기
+struct PktPutALGameRoomReq
+{
+	short XPos;
+	short YPos;
+};
+
+struct PktPutALGameRoomRes : PktBase
+{
+};
+
+struct PktPutALGameRoomNtf
+{
+	short XPos;
+	short YPos;
+	short stone; // 1이면 black 2이면 white
+};
+
+
+// 게임 종료 통보
+struct PktEndGameRoomNtf
+{
+	unsigned char UserID_len;
+	char WinUserID[MAX_USER_ID_SIZE] = { 0, }; // 아이디 정보가 없으면 무승부
+};
+
+
 #pragma pack(pop)

@@ -9,6 +9,8 @@ public :
 		NONE = 0,
 		LOGIN = 1,
 		ROOM = 2,
+		READY = 3,
+		GAME = 4,
 	};
 
 public:
@@ -36,7 +38,6 @@ public:
 
 		m_SessionIndex = sessionIndex;
 		m_ID = pszID;
-
 	}
 
 	short GetIndex() { return m_Index; }
@@ -60,6 +61,30 @@ public:
 		m_RoomIndex = -1;
 		m_CurDomainState = DOMAIN_STATE::LOGIN;
 	}
+
+	void GameReady()
+	{
+		m_CurDomainState = DOMAIN_STATE::READY;
+	}
+
+	void CancelGameReady()
+	{
+		m_CurDomainState = DOMAIN_STATE::ROOM;
+	}
+
+	void GameStart()
+	{
+		m_CurDomainState = DOMAIN_STATE::GAME;
+	}
+
+	void EndGame()
+	{
+		m_CurDomainState = DOMAIN_STATE::ROOM;
+	}
+
+	bool IsReady() { return m_CurDomainState == DOMAIN_STATE::READY; }
+
+	DOMAIN_STATE GetUserState() { return m_CurDomainState; }
 
 	bool IsCurDomainInLogIn() {
 		return m_CurDomainState == DOMAIN_STATE::LOGIN ? true : false;

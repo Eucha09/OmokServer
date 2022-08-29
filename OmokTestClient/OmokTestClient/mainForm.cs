@@ -26,10 +26,31 @@ namespace OmokTestClient
 
         Timer dispatcherUITimer;
 
+        // Omok
+        int margin = 20;
+        int gridSize = 30;
+        int stoneSize = 28;
+        int flowerSize = 10;
+
+        Graphics g;
+        Pen pen;
+        Brush wBrush, bBrush;
+
+        enum STONE { none, black, white };
+        STONE[,] goBoard = new STONE[19, 19];
+        bool flag = false;  // false = 검은 돌, true = 흰돌
 
         public mainForm()
         {
             InitializeComponent();
+
+            this.Text = "오목 클라이언트";
+            //this.BackColor = Color.Orange;
+
+            pen = new Pen(Color.Black);
+            bBrush = new SolidBrush(Color.Black);
+            wBrush = new SolidBrush(Color.White);
+
         }
 
         private void mainForm_Load(object sender, EventArgs e)
@@ -369,6 +390,164 @@ namespace OmokTestClient
             //var bodyData = Encoding.UTF8.GetBytes(textBoxRelay.Text);
             //PostSendPacket(PACKET_ID.PACKET_ID_ROOM_RELAY_REQ, bodyData);
             //DevLog.Write($"방 릴레이 요청");
+        }
+
+        private void btn_Ready_Click(object sender, EventArgs e)
+        {
+            PostSendPacket(PACKET_ID.PK_READY_GAME_ROOM_REQ, null);
+            DevLog.Write($"게임 준비 요청:  {textBoxRoomNumber.Text} 번");
+        }
+
+        private void btn_CancelReady_Click(object sender, EventArgs e)
+        {
+            PostSendPacket(PACKET_ID.PK_CANCEL_READY_GAME_ROOM_REQ, null);
+            DevLog.Write($"게임 준비 취소 요청:  {textBoxRoomNumber.Text} 번");
+        }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+            panel1.Size = new Size(2 * margin + 18 * gridSize, 2 * margin + 18 * gridSize);
+            panel1.BackColor = Color.Orange;
+            DrawBoard();
+            DrawStone();
+        }
+
+        private void panel1_MouseDown(object sender, MouseEventArgs e)
+        {
+            var requestPkt = new PutALGameRoomReqPacket();
+
+            // e.X는 픽셀단위, x는 바둑판 좌표
+            int x = (e.X - margin + gridSize / 2) / gridSize;
+            int y = (e.Y - margin + gridSize / 2) / gridSize;
+
+            if (goBoard[x, y] != STONE.none)
+                return;
+
+            requestPkt.SetValue((short)x, (short)y);
+
+            PostSendPacket(PACKET_ID.PK_PUT_AL_ROOM_REQ, requestPkt.ToBytes());
+            DevLog.Write($"바둑돌 놓기 요청");
+
+
+            /*
+            // 바둑판[x,y] 에 돌을 그린다
+            Rectangle r = new Rectangle(
+              margin + gridSize * x - stoneSize / 2,
+              margin + gridSize * y - stoneSize / 2,
+              stoneSize, stoneSize);
+
+            // 검은돌 차례
+            if (flag == false)
+            {
+                //g.FillEllipse(bBrush, r);
+                Bitmap bmp = new Bitmap("../../Images/black.png");
+                g.DrawImage(bmp, r);
+                flag = true;
+                goBoard[x, y] = STONE.black;
+            }
+            else
+            {
+                //g.FillEllipse(wBrush, r);
+                Bitmap bmp = new Bitmap("../../Images/white.png");
+                g.DrawImage(bmp, r);
+                flag = false;
+                goBoard[x, y] = STONE.white;
+            }
+
+            checkOmok(x, y);
+            */
+        }
+
+        public void PutAL(short x, short y, short stone)
+        {
+            Rectangle r = new Rectangle(
+              margin + gridSize * x - stoneSize / 2,
+              margin + gridSize * y - stoneSize / 2,
+              stoneSize, stoneSize);
+
+            // 검은돌 차례
+            if (stone == 1)
+            {
+                //g.FillEllipse(bBrush, r);
+                Bitmap bmp = new Bitmap("../../Images/black.png");
+                g.DrawImage(bmp, r);
+                goBoard[x, y] = STONE.black;
+            }
+            else if(stone == 2)
+            {
+                //g.FillEllipse(wBrush, r);
+                Bitmap bmp = new Bitmap("../../Images/white.png");
+                g.DrawImage(bmp, r);
+                goBoard[x, y] = STONE.white;
+            }
+        }
+
+        private void DrawBoard()
+        {
+            // panel1에 Graphics 객체 생성
+            g = panel1.CreateGraphics();
+
+            // 세로선 19개
+            for (int i = 0; i < 19; i++)
+            {
+                g.DrawLine(pen, new Point(margin + i * gridSize, margin),
+                  new Point(margin + i * gridSize, margin + 18 * gridSize));
+            }
+
+            // 가로선 19개
+            for (int i = 0; i < 19; i++)
+            {
+                g.DrawLine(pen, new Point(margin, margin + i * gridSize),
+                  new Point(margin + 18 * gridSize, margin + i * gridSize));
+            }
+
+            // 화점그리기
+            for (int x = 3; x <= 15; x += 6)
+                for (int y = 3; y <= 15; y += 6)
+                {
+                    g.FillEllipse(bBrush,
+                      margin + gridSize * x - flowerSize / 2,
+                      margin + gridSize * y - flowerSize / 2,
+                      flowerSize, flowerSize);
+                }
+        }
+
+        // 자료구조에서 바둑돌의 값을 읽어서 다시 그려준다
+        private void DrawStone()
+        {
+            for (int x = 0; x < 19; x++)
+            {
+                for (int y = 0; y < 19; y++)
+                {
+                    if (goBoard[x, y] == STONE.white)
+                    {
+                        Bitmap bmp = new Bitmap("../../Images/white.png");
+                        g.DrawImage(bmp, margin + x * gridSize - stoneSize / 2,
+                            margin + y * gridSize - stoneSize / 2, stoneSize, stoneSize);
+                    }
+                    else if (goBoard[x, y] == STONE.black)
+                    {
+                        Bitmap bmp = new Bitmap("../../Images/black.png");
+                        g.DrawImage(bmp, margin + x * gridSize - stoneSize / 2,
+                            margin + y * gridSize - stoneSize / 2, stoneSize, stoneSize);
+                    }
+                }
+            }
+        }
+
+        public void EndGame(string win_userID)
+        {
+            DialogResult res = MessageBox.Show(win_userID + "님이 이겼습니다.", "게임 종료", MessageBoxButtons.OK);
+
+            flag = false;
+
+            for (int x = 0; x < 19; x++)
+                for (int y = 0; y < 19; y++)
+                    goBoard[x, y] = STONE.none;
+
+            panel1.Refresh();
+            DrawBoard();
+            DrawStone();
         }
     }
 }

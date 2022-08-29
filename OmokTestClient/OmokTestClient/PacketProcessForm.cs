@@ -22,6 +22,15 @@ namespace OmokTestClient
             PacketFuncDic.Add(PACKET_ID.ROOM_CHAT_RES, PacketProcess_RoomChatResponse);
             PacketFuncDic.Add(PACKET_ID.ROOM_CHAT_NOTIFY, PacketProcess_RoomChatNotify);
             //PacketFuncDic.Add(PACKET_ID.PACKET_ID_ROOM_RELAY_NTF, PacketProcess_RoomRelayNotify);
+            PacketFuncDic.Add(PACKET_ID.PK_READY_GAME_ROOM_RES, PacketProcess_GameReadyResponse);
+            PacketFuncDic.Add(PACKET_ID.PK_READY_GAME_ROOM_NTF, PacketProcess_GameReadyNotify);
+            PacketFuncDic.Add(PACKET_ID.PK_CANCEL_READY_GAME_ROOM_RES, PacketProcess_CancelReadyResponse);
+            PacketFuncDic.Add(PACKET_ID.PK_CANCEL_READY_GAME_ROOM_NTF, PacketProcess_CancelReadyNotify);
+            PacketFuncDic.Add(PACKET_ID.PK_START_GAME_ROOM_NTF, PacketProcess_GameStartNotify);
+            PacketFuncDic.Add(PACKET_ID.PK_PUT_AL_ROOM_RES, PacketProcess_PutALResponse);
+            PacketFuncDic.Add(PACKET_ID.PK_PUT_AL_ROOM_NTF, PacketProcess_PutALNotify);
+            PacketFuncDic.Add(PACKET_ID.PK_END_GAME_ROOM_NTF, PacketProcess_EndGameNotify);
+
         }
 
         void PacketProcess(PacketData packet)
@@ -148,9 +157,13 @@ namespace OmokTestClient
             AddRoomChatMessageList(responsePkt.UserID, responsePkt.Message);
         }
 
-        void AddRoomChatMessageList(string userUniqueId, string msgssage)
+        void AddRoomChatMessageList(string userId, string msgssage)
         {
-            var msg = $"{userUniqueId}: {msgssage}";
+            string msg;
+            if (userId.Length == 0)
+                msg = msgssage;
+            else
+                msg = $"{userId}: {msgssage}";
 
             if (listBoxRoomChatMsg.Items.Count > 512)
             {
@@ -173,6 +186,85 @@ namespace OmokTestClient
 
             var stringData = Encoding.UTF8.GetString(notifyPkt.RelayData);
             DevLog.Write($"방에서 릴레이 받음. {notifyPkt.UserUniqueId} - {stringData}");
+        }
+
+        void PacketProcess_GameReadyResponse(byte[] bodyData)
+        {
+            var responsePkt = new ReadyGameRoomResPacket();
+            responsePkt.FromBytes(bodyData);
+
+            var errorCode = (ERROR_CODE)responsePkt.Result;
+            var msg = $"게임 준비 요청 결과:  {(ERROR_CODE)responsePkt.Result}";
+
+            DevLog.Write(msg, LOG_LEVEL.ERROR);
+        }
+
+        void PacketProcess_GameReadyNotify(byte[] bodyData)
+        {
+            var notifyPkt = new ReadyGameRoomNtfPacket();
+            notifyPkt.FromBytes(bodyData);
+
+            var msg = notifyPkt.UserID + "님이 게임 준비를 하였습니다.";
+            AddRoomChatMessageList("", msg);
+        }
+
+        void PacketProcess_CancelReadyResponse(byte[] bodyData)
+        {
+            var responsePkt = new CancelReadyGameRoomResPacket();
+            responsePkt.FromBytes(bodyData);
+
+            var errorCode = (ERROR_CODE)responsePkt.Result;
+            var msg = $"준비 취소 요청 결과:  {(ERROR_CODE)responsePkt.Result}";
+
+            DevLog.Write(msg, LOG_LEVEL.ERROR);
+        }
+
+        void PacketProcess_CancelReadyNotify(byte[] bodyData)
+        {
+            var notifyPkt = new CancelReadyGameRoomNtfPacket();
+            notifyPkt.FromBytes(bodyData);
+
+            var msg = notifyPkt.UserID + "님이 준비 취소를 하였습니다.";
+            AddRoomChatMessageList("", msg);
+        }
+
+        void PacketProcess_GameStartNotify(byte[] bodyData)
+        {
+            var notifyPkt = new CancelReadyGameRoomNtfPacket();
+            notifyPkt.FromBytes(bodyData);
+            
+            var msg = "게임 시작! " + notifyPkt.UserID + "님 흑";
+            AddRoomChatMessageList("", msg);
+        }
+
+        void PacketProcess_PutALResponse(byte[] bodyData)
+        {
+            var responsePkt = new CancelReadyGameRoomResPacket();
+            responsePkt.FromBytes(bodyData);
+
+            var errorCode = (ERROR_CODE)responsePkt.Result;
+            var msg = $"바둑돌 놓기 요청 결과:  {(ERROR_CODE)responsePkt.Result}";
+
+            DevLog.Write(msg, LOG_LEVEL.ERROR);
+        }
+
+        void PacketProcess_PutALNotify(byte[] bodyData)
+        {
+            var notifyPkt = new PutALGameRoomNtfPacket();
+            notifyPkt.FromBytes(bodyData);
+
+            PutAL(notifyPkt.XPos, notifyPkt.YPos, notifyPkt.Stone);
+        }
+
+        void PacketProcess_EndGameNotify(byte[] bodyData)
+        {
+            var notifyPkt = new EndGameRoomNtfPacket();
+            notifyPkt.FromBytes(bodyData);
+
+            var msg = $"게임 종료 패킷도착";
+
+            DevLog.Write(msg, LOG_LEVEL.ERROR);
+            EndGame(notifyPkt.WinUserID);
         }
     }
 }

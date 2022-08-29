@@ -46,4 +46,9 @@ private:
 	ERROR_CODE EnterRoom(PacketInfo packetInfo);
 	ERROR_CODE LeaveRoom(PacketInfo packetInfo);
 	ERROR_CODE ChatRoom(PacketInfo packetInfo);
+
+	ERROR_CODE GameReadyRoom(PacketInfo packetInfo);
+	ERROR_CODE CancelGameReadyRoom(PacketInfo packetInfo);
+
+	ERROR_CODE PutAL(PacketInfo packetInfo);
 };
