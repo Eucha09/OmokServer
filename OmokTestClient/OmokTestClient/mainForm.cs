@@ -114,22 +114,6 @@ namespace OmokTestClient
             Network.Close();
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(textSendText.Text))
-            {
-                MessageBox.Show("보낼 텍스트를 입력하세요");
-                return;
-            }
-
-            List<byte> dataSource = new List<byte>();
-            dataSource.AddRange(Encoding.UTF8.GetBytes(textSendText.Text));
-
-            SendPacketQueue.Enqueue(dataSource.ToArray());
-        }
-
-
-
         void NetworkReadProcess()
         {
             const Int16 PacketHeaderSize = PacketDef.PACKET_HEADER_SIZE;
