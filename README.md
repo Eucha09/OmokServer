@@ -8,6 +8,8 @@ Mento : [jacking75](https://github.com/jacking75)
    <img src="Images/OmokServer.png" width="800">
 </div>
 
+YouTube Link : https://www.youtube.com/watch?v=Gc7uYHf7EHE&t=1s
+
 ## 진행 과정
 
 1. 게임 서버 틀 만들기
