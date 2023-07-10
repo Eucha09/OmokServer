@@ -4,6 +4,10 @@ C++, TCP, Socket 프로그래밍을 학습하고 이를 통해 MO 구조 방식�
 
 Mento : [jacking75](https://github.com/jacking75)
 
+<div align="center">
+   <img src="Images/OmokServer.png" width="700">
+</div>
+
 ## 진행 과정
 
 1. 게임 서버 틀 만들기
@@ -71,7 +75,7 @@ sequenceDiagram
 
 ### 4) 게임 시작 요청
 
-- 방에 있는 유저가 게임 시작 요청을 ㅎ보내면 방에 있는 모든 유저에게 브로드캐스트 한다.  
+- 방에 있는 유저가 게임 시작 요청을 보내면 방에 있는 모든 유저에게 브로드캐스트 한다.  
   
 ```mermaid
 sequenceDiagram
@@ -141,3 +145,7 @@ sequenceDiagram
 서버 개발이 메인이다보니 클라이언트는 C#.net을 사용해 Winforms으로 간단히 만들었다.
 
 참고 링크 : https://m.post.naver.com/viewer/postView.naver?volumeNo=16508162&memberNo=11439725
+
+<div align="center">
+   <img src="Images/OmokClient.png" width="600">
+</div>
