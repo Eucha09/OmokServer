@@ -5,7 +5,7 @@ C++, TCP, Socket 프로그래밍을 학습하고 이를 통해 MO 구조 방식�
 Mento : [jacking75](https://github.com/jacking75)
 
 <div align="center">
-   <img src="Images/OmokServer.png" width="700">
+   <img src="Images/OmokServer.png" width="800">
 </div>
 
 ## 진행 과정
@@ -147,5 +147,5 @@ sequenceDiagram
 참고 링크 : https://m.post.naver.com/viewer/postView.naver?volumeNo=16508162&memberNo=11439725
 
 <div align="center">
-   <img src="Images/OmokClient.png" width="600">
+   <img src="Images/OmokClient.png" width="700">
 </div>
